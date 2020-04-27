@@ -20,8 +20,9 @@ import net.sf.jsqlparser.statement.values.ValuesStatement;
 import java.util.ArrayList;
 
 public class InspectorStatementVisitor implements StatementVisitor {
-    boolean foundProblem = false;
-    ArrayList<String> problemList = new ArrayList<>();
+    private InspectorSelectVisitor selectVisitor = new InspectorSelectVisitor();
+    private boolean foundProblem = false;
+    ArrayList<String> problemList = new ArrayList<String>();
 
     @Override
     public void visit(Comment comment) {
@@ -37,15 +38,20 @@ public class InspectorStatementVisitor implements StatementVisitor {
 
     @Override
     public void visit(Delete delete) {
+        foundProblem = true;
+        problemList.add(delete.toString());
     }
 
     @Override
     public void visit(Update update) {
+        foundProblem = true;
+        problemList.add(update.toString());
     }
 
     @Override
     public void visit(Insert insert) {
-
+        foundProblem = true;
+        problemList.add(insert.toString());
     }
 
     @Override
@@ -98,6 +104,9 @@ public class InspectorStatementVisitor implements StatementVisitor {
 
     @Override
     public void visit(Statements stmts) {
+        for(Statement stm : stmts.getStatements()){
+            stm.accept(this);
+        }
     }
 
     @Override
@@ -126,7 +135,11 @@ public class InspectorStatementVisitor implements StatementVisitor {
 
     @Override
     public void visit(Select select) {
-        problemList.add(select.toString());
+        select.getSelectBody().accept(selectVisitor);
+        if(selectVisitor.foundProblem()){
+            this.foundProblem = true;
+            this.problemList.addAll(selectVisitor.getProblemList());
+        }
     }
 
     @Override
@@ -149,6 +162,8 @@ public class InspectorStatementVisitor implements StatementVisitor {
 
     @Override
     public void visit(ValuesStatement values) {
+        foundProblem = true;
+        problemList.add(values.toString());
     }
 
     @Override
@@ -173,5 +188,9 @@ public class InspectorStatementVisitor implements StatementVisitor {
     public void visit(DeclareStatement aThis) {
         foundProblem = true;
         problemList.add(aThis.toString());
+    }
+
+    public boolean foundProblem() {
+        return foundProblem;
     }
 }

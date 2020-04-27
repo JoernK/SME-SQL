@@ -22,7 +22,11 @@ public class Main {
 
             InspectorStatementVisitor vis = new InspectorStatementVisitor();
             stat.accept(vis);
-            System.out.println(vis.problemList);
+            if(vis.foundProblem()){
+                System.out.println("Error: Unsupported SQL operation");
+                System.out.println(vis.problemList);
+            }
+
 
         } catch (JSQLParserException e) {
             e.printStackTrace();
