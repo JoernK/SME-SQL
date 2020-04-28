@@ -21,7 +21,7 @@ import net.sf.jsqlparser.statement.values.ValuesStatement;
 import java.util.ArrayList;
 
 public class InspectorStatementVisitor implements StatementVisitor {
-    private InspectorSelectVisitor selectVisitor = new InspectorSelectVisitor();
+
     private boolean foundProblem = false;
     ArrayList<String> problemList = new ArrayList<String>();
 
@@ -136,6 +136,7 @@ public class InspectorStatementVisitor implements StatementVisitor {
 
     @Override
     public void visit(Select select) {
+        InspectorSelectVisitor selectVisitor = new InspectorSelectVisitor();
         select.getSelectBody().accept(selectVisitor);
         if(selectVisitor.foundProblem()){
             this.foundProblem = true;

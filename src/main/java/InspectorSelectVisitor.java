@@ -9,8 +9,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 public class InspectorSelectVisitor implements SelectVisitor, SelectItemVisitor {
-    private InspectorFromItemVisitor fromItemVisitor = new InspectorFromItemVisitor();
-    private InspectorSelectItemVisitor selectItemVisitor = new InspectorSelectItemVisitor();
+
     private boolean foundProblem = false;
     private ArrayList<String> problemList = new ArrayList<String>();
     private ArrayList<Column> accessColumnList = new ArrayList<Column>();
@@ -72,6 +71,8 @@ public class InspectorSelectVisitor implements SelectVisitor, SelectItemVisitor 
             this.problemList.add("SQL_CALC_FOUND_ROWS");
         }
         //TODO Add selectItems visitor
+        InspectorSelectItemVisitor selectItemVisitor = new InspectorSelectItemVisitor();
+
         for(SelectItem selectItem : plainSelect.getSelectItems()){
             selectItem.accept(selectItemVisitor);
         }
@@ -97,6 +98,7 @@ public class InspectorSelectVisitor implements SelectVisitor, SelectItemVisitor 
 
         if (plainSelect.getFromItem() != null) {
             //TODO visit FROM item
+            InspectorFromItemVisitor fromItemVisitor = new InspectorFromItemVisitor();
             plainSelect.getFromItem().accept(fromItemVisitor);
             if(fromItemVisitor.foundProblem()){
                 foundProblem = true;

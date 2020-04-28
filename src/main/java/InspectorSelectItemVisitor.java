@@ -10,7 +10,6 @@ import java.util.ArrayList;
 
 public class InspectorSelectItemVisitor implements SelectItemVisitor {
 
-    private InspectorExpressionVisitor inspectorExpressionVisitor = new InspectorExpressionVisitor();
     private boolean foundProblem = false;
     private ArrayList<String> problemList = new ArrayList<String>();
 
@@ -39,6 +38,7 @@ public class InspectorSelectItemVisitor implements SelectItemVisitor {
             foundProblem = true;
             problemList.add("Empty Select expression");
         }
+        InspectorExpressionVisitor inspectorExpressionVisitor = new InspectorExpressionVisitor();
         selectExpressionItem.getExpression().accept(inspectorExpressionVisitor);
         if (inspectorExpressionVisitor.foundProblem()) {
             foundProblem = true;
