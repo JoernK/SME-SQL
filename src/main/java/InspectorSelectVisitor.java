@@ -1,13 +1,20 @@
+import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.*;
 import net.sf.jsqlparser.statement.values.ValuesStatement;
 
+import javax.naming.CompositeName;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Iterator;
 
 public class InspectorSelectVisitor implements SelectVisitor, SelectItemVisitor {
+    private InspectorFromItemVisitor fromItemVisitor = new InspectorFromItemVisitor();
+    private InspectorSelectItemVisitor selectItemVisitor = new InspectorSelectItemVisitor();
     private boolean foundProblem = false;
     private ArrayList<String> problemList = new ArrayList<String>();
+    private ArrayList<Column> accessColumnList = new ArrayList<Column>();
+    private Table fromTable;
 
     @Override
     public void visit(AllColumns allColumns) {
@@ -45,12 +52,12 @@ public class InspectorSelectVisitor implements SelectVisitor, SelectItemVisitor 
 
         if (plainSelect.getFirst() != null) {
             this.foundProblem = true;
-            this.problemList.add("TODO");
+            this.problemList.add("FIRST");
         }
 
         if (plainSelect.getDistinct() != null) {
             this.foundProblem = true;
-            this.problemList.add("TODO");
+            this.problemList.add("DISTINCT");
         }
         if (plainSelect.getTop() != null) {
             this.foundProblem = true;
@@ -65,6 +72,15 @@ public class InspectorSelectVisitor implements SelectVisitor, SelectItemVisitor 
             this.problemList.add("SQL_CALC_FOUND_ROWS");
         }
         //TODO Add selectItems visitor
+        for(SelectItem selectItem : plainSelect.getSelectItems()){
+            selectItem.accept(selectItemVisitor);
+        }
+        if(selectItemVisitor.foundProblem()){
+            foundProblem = true;
+            problemList.addAll(selectItemVisitor.getProblemList());
+        } else {
+            accessColumnList.addAll(selectItemVisitor.getAccessColumnList());
+        }
 //        sql.append(getStringList(selectItems));
 
         if (plainSelect.getIntoTables() != null) {
@@ -81,7 +97,14 @@ public class InspectorSelectVisitor implements SelectVisitor, SelectItemVisitor 
 
         if (plainSelect.getFromItem() != null) {
             //TODO visit FROM item
-            //sql.append(" FROM ").append(fromItem);
+            plainSelect.getFromItem().accept(fromItemVisitor);
+            if(fromItemVisitor.foundProblem()){
+                foundProblem = true;
+                problemList.addAll(fromItemVisitor.getProblemList());
+            } else {
+                fromTable = fromItemVisitor.getFromTable();
+            }
+
             if (plainSelect.getJoins() != null) {
                 this.foundProblem = true;
                 this.problemList.add("JOIN");
@@ -110,12 +133,12 @@ public class InspectorSelectVisitor implements SelectVisitor, SelectItemVisitor 
                 problemList.add("Oracle Hierarchical");
             }
             if (plainSelect.getGroupBy() != null) {
-                //TODO Support
+                //TODO Support ?
                 foundProblem = true;
                 problemList.add("GROUP BY");
             }
             if (plainSelect.getHaving() != null) {
-                //TODO Support
+                //TODO Support ?
                 foundProblem = true;
                 problemList.add(" HAVING ");
             }
@@ -200,5 +223,10 @@ public class InspectorSelectVisitor implements SelectVisitor, SelectItemVisitor 
 
     public ArrayList<String> getProblemList() {
         return problemList;
+    }
+
+
+    public ArrayList<Column> getAccessColumnList() {
+        return accessColumnList;
     }
 }

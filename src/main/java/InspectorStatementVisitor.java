@@ -1,3 +1,4 @@
+import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.*;
 import net.sf.jsqlparser.statement.alter.Alter;
 import net.sf.jsqlparser.statement.comment.Comment;
@@ -140,6 +141,7 @@ public class InspectorStatementVisitor implements StatementVisitor {
             this.foundProblem = true;
             this.problemList.addAll(selectVisitor.getProblemList());
         }
+        //TODO ADD SME capabilities
     }
 
     @Override
