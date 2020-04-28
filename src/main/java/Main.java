@@ -9,6 +9,7 @@ import net.sf.jsqlparser.statement.StatementVisitorAdapter;
 import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
 
+import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Main {
@@ -16,17 +17,27 @@ public class Main {
     public static void main(String[] args) {
         Scanner scan = new Scanner(System.in);
         String argument;
-        argument = scan.nextLine();
-        try {
-            Statement stat = CCJSqlParserUtil.parse(argument);
+        ArrayList<String> allArgs = new ArrayList<String>();
+        System.out.println("Insert SQL Statements. Exit with '#'");
+        do {
 
-            InspectorStatementVisitor vis = new InspectorStatementVisitor();
-            stat.accept(vis);
-            if(vis.foundProblem()){
-                System.out.println("Error: Unsupported SQL operation");
-                System.out.println(vis.problemList);
+            argument = scan.nextLine();
+            if(argument.equals("#")) {
+                break;
+            } else {
+                allArgs.add(argument);
             }
-
+        } while (true);
+        try {
+            for(String arg: allArgs){
+                Statement stat = CCJSqlParserUtil.parse(arg);
+                InspectorStatementVisitor vis = new InspectorStatementVisitor();
+                stat.accept(vis);
+                if(vis.foundProblem()){
+                    System.out.println("Error: Unsupported SQL operation");
+                    System.out.println(vis.problemList);
+                }
+            }
 
         } catch (JSQLParserException e) {
             e.printStackTrace();

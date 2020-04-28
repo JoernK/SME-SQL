@@ -141,8 +141,9 @@ public class InspectorStatementVisitor implements StatementVisitor {
         if(selectVisitor.foundProblem()){
             this.foundProblem = true;
             this.problemList.addAll(selectVisitor.getProblemList());
-        }
+        } else {
         //TODO ADD SME capabilities
+        }
     }
 
     @Override
