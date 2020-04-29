@@ -96,8 +96,7 @@ public class InspectorExpressionVisitor implements ExpressionVisitor {
 
     @Override
     public void visit(Parenthesis parenthesis) {
-        foundProblem = true;
-        problemList.add("Type of Expression not supported");
+        parenthesis.getExpression().accept(this);
     }
 
     @Override
