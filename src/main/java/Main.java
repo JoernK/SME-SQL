@@ -19,7 +19,7 @@ import java.util.Scanner;
 
 public class Main {
     static boolean stdOut = true;
-    static boolean highStdOut = true;
+    static boolean highStdOut = false;
 
     public static void main(String[] args) {
         Scanner scan = new Scanner(System.in);
@@ -83,15 +83,16 @@ public class Main {
                             try {
                                 String cur = result.getString(i);
                                 if(cur != null) {
-                                    System.out.print(cur.trim() + " | ");
+                                    System.out.print(cur.trim() + "\t|\t");
                                 } else {
-                                    System.out.print("Null" + " | ");
+                                    System.out.print("NULL" + "\t|\t");
                                 }
 
                             } catch (SQLException e) {
 
                             }
                         }
+                        System.out.print("\n");
                     }
                 }
             } catch (SQLException e) {
@@ -110,9 +111,9 @@ public class Main {
                             try {
                                 String cur = result.getString(i);
                                 if(cur != null) {
-                                    System.out.print(cur.trim() + " | ");
+                                    System.out.print(cur.trim() + "\t|\t");
                                 } else {
-                                    System.out.print("Null" + " | ");
+                                    System.out.print("NULL" + "\t|\t");
                                 }
 
                             } catch (SQLException e) {
