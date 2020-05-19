@@ -10,17 +10,14 @@ import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Main {
 
     public static void main(String[] args) {
-        Connection conn = DBConnector.connect();
-        if(conn == null) {
-            System.err.println("No database connected exit.");
-            System.exit(2);
-        }
+
         Scanner scan = new Scanner(System.in);
         String argument;
         ArrayList<String> allArgs = new ArrayList<String>();
@@ -35,7 +32,9 @@ public class Main {
             }
         } while (true);
 
-        ArrayList<Statement> statementsParsed = new ArrayList<Statement>();
+        ArrayList<String> lowStatements = new ArrayList<String>();
+        ArrayList<String> highStatements = new ArrayList<String>();
+
         try {
             for(String arg: allArgs){
                 Statement stat = CCJSqlParserUtil.parse(arg);
@@ -46,12 +45,29 @@ public class Main {
                     System.out.println(vis.problemList);
                     System.exit(1);
                 }
-                statementsParsed.add(stat);
+                lowStatements.add(vis.lowStatement);
+                highStatements.add(vis.highStatement);
             }
 
         } catch (JSQLParserException e) {
             e.printStackTrace();
             System.exit(1);
         }
+
+        System.out.println("Low Execution: " + lowStatements);
+        System.out.println("High Execution: " + highStatements);
+
+        Connection conn = DBConnector.connect();
+        if(conn == null) {
+            System.err.println("No database connected exit.");
+            System.exit(2);
+        }
+
+        try {
+            conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
+
 }

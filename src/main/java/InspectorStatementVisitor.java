@@ -21,9 +21,15 @@ import net.sf.jsqlparser.statement.values.ValuesStatement;
 import java.util.ArrayList;
 
 public class InspectorStatementVisitor implements StatementVisitor {
-
+    String highStatement;
+    String lowStatement;
     private boolean foundProblem = false;
-    ArrayList<String> problemList = new ArrayList<String>();
+    ArrayList<String> problemList;
+    public InspectorStatementVisitor(){
+        problemList = new ArrayList<String>();
+        foundProblem = false;
+    }
+
 
     @Override
     public void visit(Comment comment) {
@@ -105,9 +111,9 @@ public class InspectorStatementVisitor implements StatementVisitor {
 
     @Override
     public void visit(Statements stmts) {
-        for(Statement stm : stmts.getStatements()){
-            stm.accept(this);
-        }
+        foundProblem = true;
+        problemList.add(stmts.toString());
+
     }
 
     @Override
@@ -142,8 +148,24 @@ public class InspectorStatementVisitor implements StatementVisitor {
             this.foundProblem = true;
             this.problemList.addAll(selectVisitor.getProblemList());
         } else {
-        //TODO ADD SME capabilities
+
+            this.highStatement = select.toString();
+
+            String lowStatementUnprepared = select.toString();
+            String table = selectVisitor.getFromTable().toString();
+
+            for(Column currentC : selectVisitor.getAccessColumnList()){
+                if(ExampleDBACL.isColumnInTableHigh(table, currentC.getColumnName())) {
+                       lowStatementUnprepared = lowStatementUnprepared.replace(currentC.getColumnName(), "NULL");
+
+                }
+            }
+
+            this.lowStatement = lowStatementUnprepared;
+
         }
+
+
     }
 
     @Override

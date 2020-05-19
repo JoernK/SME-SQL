@@ -231,4 +231,9 @@ public class InspectorSelectVisitor implements SelectVisitor, SelectItemVisitor 
     public ArrayList<Column> getAccessColumnList() {
         return accessColumnList;
     }
+
+    public Table getFromTable() {
+        return fromTable;
+    }
+
 }
