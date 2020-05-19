@@ -12,6 +12,11 @@ public class ExampleDBACL {
         HashMap<String, Boolean> studs = new HashMap<String, Boolean>();
         studs.put("cid", false);
         studs.put("name", true);
+        studs.put("subject", false);
+        studs.put("course_level", true);
+        studs.put("zip", true);
+        studs.put("city", true);
+        studs.put("phone", true);
         highColumnInTable.put("students",studs);
         return highColumnInTable;
     }

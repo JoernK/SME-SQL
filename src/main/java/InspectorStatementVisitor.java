@@ -21,11 +21,15 @@ import net.sf.jsqlparser.statement.values.ValuesStatement;
 import java.util.ArrayList;
 
 public class InspectorStatementVisitor implements StatementVisitor {
+    boolean stdOut;
     String highStatement;
     String lowStatement;
+    private boolean outputHigh;
     private boolean foundProblem = false;
     ArrayList<String> problemList;
-    public InspectorStatementVisitor(){
+    public InspectorStatementVisitor(boolean outputHigh, boolean stdOut){
+        this.stdOut = stdOut;
+        this.outputHigh = outputHigh;
         problemList = new ArrayList<String>();
         foundProblem = false;
     }
@@ -149,19 +153,24 @@ public class InspectorStatementVisitor implements StatementVisitor {
             this.problemList.addAll(selectVisitor.getProblemList());
         } else {
 
-            this.highStatement = select.toString();
-
-            String lowStatementUnprepared = select.toString();
-            String table = selectVisitor.getFromTable().toString();
-
-            for(Column currentC : selectVisitor.getAccessColumnList()){
-                if(ExampleDBACL.isColumnInTableHigh(table, currentC.getColumnName())) {
-                       lowStatementUnprepared = lowStatementUnprepared.replace(currentC.getColumnName(), "NULL");
-
-                }
+            if(outputHigh || !stdOut){
+                this.highStatement =  select.toString() ;
             }
 
-            this.lowStatement = lowStatementUnprepared;
+            if(!outputHigh || !stdOut) {
+                String lowStatementUnprepared = select.toString();
+                String table = selectVisitor.getFromTable().toString();
+
+                for (Column currentC : selectVisitor.getAccessColumnList()) {
+                    if (ExampleDBACL.isColumnInTableHigh(table, currentC.getColumnName())) {
+                        lowStatementUnprepared = lowStatementUnprepared.replace(currentC.getColumnName(), "NULL");
+
+                    }
+                }
+                this.lowStatement = lowStatementUnprepared;
+            }
+
+
 
         }
 

@@ -9,15 +9,19 @@ import net.sf.jsqlparser.statement.StatementVisitorAdapter;
 import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
 
+import java.awt.geom.RectangularShape;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Main {
+    static boolean stdOut = true;
+    static boolean highStdOut = true;
 
     public static void main(String[] args) {
-
         Scanner scan = new Scanner(System.in);
         String argument;
         ArrayList<String> allArgs = new ArrayList<String>();
@@ -38,15 +42,19 @@ public class Main {
         try {
             for(String arg: allArgs){
                 Statement stat = CCJSqlParserUtil.parse(arg);
-                InspectorStatementVisitor vis = new InspectorStatementVisitor();
+                InspectorStatementVisitor vis = new InspectorStatementVisitor(highStdOut, stdOut);
                 stat.accept(vis);
                 if(vis.foundProblem()){
                     System.out.println("Error: Unsupported SQL operation");
                     System.out.println(vis.problemList);
                     System.exit(1);
                 }
-                lowStatements.add(vis.lowStatement);
-                highStatements.add(vis.highStatement);
+                if(vis.lowStatement != null) {
+                    lowStatements.add(vis.lowStatement);
+                };
+                if(vis.highStatement != null) {
+                    highStatements.add(vis.highStatement);
+                }
             }
 
         } catch (JSQLParserException e) {
@@ -61,6 +69,63 @@ public class Main {
         if(conn == null) {
             System.err.println("No database connected exit.");
             System.exit(2);
+        }
+
+
+        //Low execution
+        for(String currentStStr : lowStatements) {
+            try {
+                java.sql.Statement cstat = conn.createStatement();
+                ResultSet result = cstat.executeQuery(currentStStr);
+                if(stdOut && !highStdOut) {
+                    while (result.next()) {
+                        for(int i = 0; i < 10; i++) {
+                            try {
+                                String cur = result.getString(i);
+                                if(cur != null) {
+                                    System.out.print(cur.trim() + " | ");
+                                } else {
+                                    System.out.print("Null" + " | ");
+                                }
+
+                            } catch (SQLException e) {
+
+                            }
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+        for(String currentStStr : highStatements) {
+            try {
+                java.sql.Statement cstat = conn.createStatement();
+                ResultSet result = cstat.executeQuery(currentStStr);
+                if (stdOut && highStdOut) {
+                    while (result.next()) {
+                        for(int i = 0; i < 10; i++) {
+                            try {
+                                String cur = result.getString(i);
+                                if(cur != null) {
+                                    System.out.print(cur.trim() + " | ");
+                                } else {
+                                    System.out.print("Null" + " | ");
+                                }
+
+                            } catch (SQLException e) {
+
+                            }
+                        }
+                        System.out.print("\n");
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
         }
 
         try {
