@@ -6,24 +6,18 @@ import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.SubSelect;
 
-import javax.naming.CompositeName;
 import java.util.ArrayList;
 
-public class InspectorExpressionVisitor implements ExpressionVisitor {
-    private boolean onlyValues = false;
+public class InspectorWhereExpressionVisitor implements ExpressionVisitor {
+    boolean high = false;
     private boolean foundProblem = false;
+    private String tablename;
 
-
+    public InspectorWhereExpressionVisitor(String tablename){
+        this.tablename = tablename;
+    }
     private ArrayList<String> problemList = new ArrayList<String>();
-    private ArrayList<String> accessColumnList = new ArrayList<String>();
-
-    public InspectorExpressionVisitor(){
-        super();
-    }
-    public InspectorExpressionVisitor(boolean onlyValues){
-        super();
-        this.onlyValues = onlyValues;
-    }
+    public ArrayList<String> accessColumnList = new ArrayList<String>();
 
     @Override
     public void visit(BitwiseRightShift aThis) {
@@ -39,8 +33,8 @@ public class InspectorExpressionVisitor implements ExpressionVisitor {
 
     @Override
     public void visit(NullValue nullValue) {
-//        foundProblem = true;
-//        problemList.add("Type of Expression not supported");
+        foundProblem = true;
+        problemList.add("Type of Expression not supported");
     }
 
     @Override
@@ -110,7 +104,8 @@ public class InspectorExpressionVisitor implements ExpressionVisitor {
 
     @Override
     public void visit(StringValue stringValue) {
-    //Allow
+        foundProblem = true;
+        problemList.add("Wrong Where Clause");
     }
 
     @Override
@@ -163,20 +158,39 @@ public class InspectorExpressionVisitor implements ExpressionVisitor {
 
     @Override
     public void visit(EqualsTo equalsTo) {
-        foundProblem = true;
-        problemList.add("Type of Expression not supported");
+        InspectorExpressionVisitor ievLeft = new InspectorExpressionVisitor();
+        Expression left = equalsTo.getLeftExpression();
+        left.accept(ievLeft);
+        if(ievLeft.foundProblem()) {
+            foundProblem = true;
+            this.problemList.addAll(ievLeft.getProblemList());
+        } else {
+            for(String column: accessColumnList) {
+                if(ExampleDBACL.isColumnInTableHigh(tablename, column)){
+                    this.high = true;
+                }
+            }
+            accessColumnList.addAll(ievLeft.getAccessColumnList());
+            InspectorExpressionVisitor ievRight = new InspectorExpressionVisitor(true);
+            Expression right = equalsTo.getRightExpression();
+            right.accept(ievRight);
+            if(ievRight.foundProblem()){
+                this.foundProblem = true;
+                this.problemList.addAll(ievRight.getProblemList());
+            }
+        }
     }
 
     @Override
     public void visit(GreaterThan greaterThan) {
-        foundProblem = true;
-        problemList.add("Type of Expression not supported");
+        this.foundProblem = true;
+        problemList.add("Greater than");
     }
 
     @Override
     public void visit(GreaterThanEquals greaterThanEquals) {
-        foundProblem = true;
-        problemList.add("Type of Expression not supported");
+        this.foundProblem = true;
+        problemList.add("Greater than");
     }
 
     @Override
@@ -229,13 +243,8 @@ public class InspectorExpressionVisitor implements ExpressionVisitor {
 
     @Override
     public void visit(Column tableColumn) {
-        if(this.onlyValues) {
-            this.foundProblem = true;
-            this.problemList.add("Table Reference where only values are allowed");
-        } else {
-            accessColumnList.add(tableColumn.toString());
-        }
-
+        this.foundProblem = true;
+        this.problemList.add("Table Reference where only values are allowed");
     }
 
     @Override

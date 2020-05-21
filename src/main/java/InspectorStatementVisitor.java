@@ -1,3 +1,5 @@
+import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.*;
 import net.sf.jsqlparser.statement.alter.Alter;
@@ -12,6 +14,8 @@ import net.sf.jsqlparser.statement.execute.Execute;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.merge.Merge;
 import net.sf.jsqlparser.statement.replace.Replace;
+import net.sf.jsqlparser.statement.select.Join;
+import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.truncate.Truncate;
 import net.sf.jsqlparser.statement.update.Update;
@@ -19,17 +23,15 @@ import net.sf.jsqlparser.statement.upsert.Upsert;
 import net.sf.jsqlparser.statement.values.ValuesStatement;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class InspectorStatementVisitor implements StatementVisitor {
-    boolean stdOut;
+
     String highStatement;
     String lowStatement;
-    private boolean outputHigh;
     private boolean foundProblem = false;
     ArrayList<String> problemList;
-    public InspectorStatementVisitor(boolean outputHigh, boolean stdOut){
-        this.stdOut = stdOut;
-        this.outputHigh = outputHigh;
+    public InspectorStatementVisitor(){
         problemList = new ArrayList<String>();
         foundProblem = false;
     }
@@ -55,8 +57,106 @@ public class InspectorStatementVisitor implements StatementVisitor {
 
     @Override
     public void visit(Update update) {
-        foundProblem = true;
-        problemList.add(update.toString());
+        StringBuilder highExec = new StringBuilder("UPDATE ");
+        StringBuilder lowExec = new StringBuilder("UPDATE ");
+        ArrayList<String> writeColumnsLow = new ArrayList<String>();
+        String tableName = update.getTable().toString();
+
+        highExec.append(tableName).append(" SET ");
+        lowExec.append(tableName).append(" SET ");
+        if (update.getJoins() != null) {
+            foundProblem = true;
+            problemList.add(update.getJoins().toString());
+        }
+
+        int numberHighColumns = 0;
+        int numberLowColumns = 0;
+        if (!update.isUseSelect()) {
+            for (int i= 0; i < update.getColumns().size(); i++) {
+                // Inspect columns
+                String column = update.getColumns().get(i).toString();
+
+                boolean high = ExampleDBACL.isColumnInTableHigh(tableName, column);
+                if(!high) {
+                    writeColumnsLow.add(column);
+                }
+                // Inspect expression
+                Expression expression = update.getExpressions().get(i);
+                InspectorExpressionVisitor iev = new InspectorExpressionVisitor(true);
+                expression.accept(iev);
+                if(iev.foundProblem()){
+                    this.foundProblem = true;
+                    problemList.addAll(iev.getProblemList());
+                } else {
+                    if(high) {
+                        if(numberHighColumns != 0){
+                            highExec.append(", ");
+                        }
+                        highExec.append(column).append(" = ").append(expression.toString());
+                        numberHighColumns++;
+                    } else {
+                        if(numberLowColumns != 0){
+                            lowExec.append(", ");
+                        }
+                        lowExec.append(column).append(" = ").append(expression.toString());
+                        numberLowColumns++;
+                    }
+
+                }
+
+            }
+        } else {
+            this.foundProblem = true;
+            problemList.add("Select inside UPDATE");
+        }
+        if (update.getFromItem() != null) {
+            this.foundProblem = true;
+            problemList.add("FROM" + update.getFromItem().toString());
+        }
+
+        if (update.getWhere() != null) {
+            InspectorWhereExpressionVisitor iev = new InspectorWhereExpressionVisitor(tableName);
+            update.getWhere().accept(iev);
+            String whereColumn = iev.accessColumnList.get(0);
+            if (iev.foundProblem()) {
+                this.foundProblem = true;
+                problemList.addAll(iev.getProblemList());
+            } else if(writeColumnsLow.contains(whereColumn)){
+                this.foundProblem = true;
+                problemList.add("WHERE column part of UPDATE column");
+            } else {
+                highExec.append(" WHERE ").append(update.getWhere().toString());
+                if(iev.high) {
+                    lowExec = null;
+                } else {
+                    lowExec.append(" WHERE ").append(update.getWhere().toString());
+                }
+            }
+            if (update.getOrderByElements() != null) {
+                this.foundProblem = true;
+                problemList.add(PlainSelect.orderByToString(update.getOrderByElements()));
+            }
+            if (update.getLimit() != null) {
+                this.foundProblem = true;
+                problemList.add(update.getLimit().toString());
+            }
+
+            if (update.isReturningAllColumns()) {
+                this.foundProblem = true;
+                problemList.add(" RETURNING *");
+            } else if (update.getReturningExpressionList() != null) {
+                this.foundProblem = true;
+                problemList.add(" RETURNING *");
+            }
+        }
+        if(numberHighColumns != 0) {
+            this.highStatement = highExec.toString();
+        }
+        if(lowExec != null){
+            if(numberLowColumns != 0){
+                this.lowStatement = lowExec.toString();
+            }
+        }
     }
 
     @Override
@@ -153,28 +253,21 @@ public class InspectorStatementVisitor implements StatementVisitor {
             this.problemList.addAll(selectVisitor.getProblemList());
         } else {
 
-            if(outputHigh || !stdOut){
-                this.highStatement =  select.toString() ;
-            }
 
-            if(!outputHigh || !stdOut) {
-                String lowStatementUnprepared = select.toString();
-                String table = selectVisitor.getFromTable().toString();
+            this.highStatement =  select.toString() ;
 
-                for (Column currentC : selectVisitor.getAccessColumnList()) {
-                    if (ExampleDBACL.isColumnInTableHigh(table, currentC.getColumnName())) {
-                        lowStatementUnprepared = lowStatementUnprepared.replace(currentC.getColumnName(), "NULL");
+            String lowStatementUnprepared = select.toString();
+            String table = selectVisitor.getFromTable().toString();
 
-                    }
+            for (String currentC : selectVisitor.getAccessColumnList()) {
+                if (ExampleDBACL.isColumnInTableHigh(table, currentC)) {
+                    lowStatementUnprepared = lowStatementUnprepared.replace(currentC, "NULL");
+
                 }
-                this.lowStatement = lowStatementUnprepared;
             }
-
-
+            this.lowStatement = lowStatementUnprepared;
 
         }
-
-
     }
 
     @Override

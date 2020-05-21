@@ -14,7 +14,7 @@ public class InspectorSelectItemVisitor implements SelectItemVisitor {
     private ArrayList<String> problemList = new ArrayList<String>();
 
     private Table fromTable;
-    private ArrayList<Column> accessColumnList = new ArrayList<Column>();
+    private ArrayList<String> accessColumnList = new ArrayList<String>();
 
     @Override
     public void visit(AllColumns allColumns) {
@@ -57,7 +57,7 @@ public class InspectorSelectItemVisitor implements SelectItemVisitor {
     public boolean foundProblem() {
         return foundProblem;
     }
-    public ArrayList<Column> getAccessColumnList() {
+    public ArrayList<String> getAccessColumnList() {
         return accessColumnList;
     }
 

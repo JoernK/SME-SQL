@@ -12,7 +12,7 @@ public class InspectorSelectVisitor implements SelectVisitor, SelectItemVisitor 
 
     private boolean foundProblem = false;
     private ArrayList<String> problemList = new ArrayList<String>();
-    private ArrayList<Column> accessColumnList = new ArrayList<Column>();
+    private ArrayList<String> accessColumnList = new ArrayList<String>();
     private Table fromTable;
 
     @Override
@@ -228,7 +228,7 @@ public class InspectorSelectVisitor implements SelectVisitor, SelectItemVisitor 
     }
 
 
-    public ArrayList<Column> getAccessColumnList() {
+    public ArrayList<String> getAccessColumnList() {
         return accessColumnList;
     }
 

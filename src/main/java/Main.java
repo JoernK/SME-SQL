@@ -19,7 +19,7 @@ import java.util.Scanner;
 
 public class Main {
     static boolean stdOut = true;
-    static boolean highStdOut = false;
+    static boolean highStdOut = true;
 
     public static void main(String[] args) {
         Scanner scan = new Scanner(System.in);
@@ -42,7 +42,7 @@ public class Main {
         try {
             for(String arg: allArgs){
                 Statement stat = CCJSqlParserUtil.parse(arg);
-                InspectorStatementVisitor vis = new InspectorStatementVisitor(highStdOut, stdOut);
+                InspectorStatementVisitor vis = new InspectorStatementVisitor();
                 stat.accept(vis);
                 if(vis.foundProblem()){
                     System.out.println("Error: Unsupported SQL operation");
@@ -51,9 +51,13 @@ public class Main {
                 }
                 if(vis.lowStatement != null) {
                     lowStatements.add(vis.lowStatement);
+                } else {
+                    lowStatements.add("dummy");
                 };
                 if(vis.highStatement != null) {
                     highStatements.add(vis.highStatement);
+                } else {
+                    highStatements.add("dummy");
                 }
             }
 
@@ -73,54 +77,60 @@ public class Main {
 
 
         //Low execution
-        for(String currentStStr : lowStatements) {
+        for(int i = 0; i < lowStatements.size(); i++) {
             try {
-                java.sql.Statement cstat = conn.createStatement();
-                ResultSet result = cstat.executeQuery(currentStStr);
-                if(stdOut && !highStdOut) {
-                    while (result.next()) {
-                        for(int i = 0; i < 10; i++) {
-                            try {
-                                String cur = result.getString(i);
-                                if(cur != null) {
-                                    System.out.print(cur.trim() + "\t|\t");
-                                } else {
-                                    System.out.print("NULL" + "\t|\t");
+                java.sql.Statement cstathigh = conn.createStatement();
+                String curHighStr = highStatements.get(i);
+                if(!curHighStr.equals("dummy")) {
+                    if(curHighStr.contains("UPDATE")) {
+                        cstathigh.executeUpdate(curHighStr);
+                    } else {
+                        ResultSet resultHigh = cstathigh.executeQuery(highStatements.get(i));
+                        if (stdOut && highStdOut) {
+                            while (resultHigh.next()) {
+                                for (int j = 0; j < 10; j++) {
+                                    try {
+                                        String cur = resultHigh.getString(j);
+                                        if (cur != null) {
+                                            System.out.print(cur.trim() + "\t|\t");
+                                        } else {
+                                            System.out.print("NULL" + "\t|\t");
+                                        }
+
+                                    } catch (SQLException e) {
+
+                                    }
                                 }
-
-                            } catch (SQLException e) {
-
+                                System.out.print("\n");
                             }
                         }
-                        System.out.print("\n");
                     }
                 }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-
-        }
-
-        for(String currentStStr : highStatements) {
-            try {
                 java.sql.Statement cstat = conn.createStatement();
-                ResultSet result = cstat.executeQuery(currentStStr);
-                if (stdOut && highStdOut) {
-                    while (result.next()) {
-                        for(int i = 0; i < 10; i++) {
-                            try {
-                                String cur = result.getString(i);
-                                if(cur != null) {
-                                    System.out.print(cur.trim() + "\t|\t");
-                                } else {
-                                    System.out.print("NULL" + "\t|\t");
+                String curLowStr = lowStatements.get(i);
+                if(!curLowStr.equals("dummy")) {
+                    if(curLowStr.contains("UPDATE")) {
+                        cstat.executeUpdate(curLowStr);
+                    } else {
+                        ResultSet result = cstat.executeQuery(curLowStr);
+                        if (stdOut && !highStdOut) {
+                            while (result.next()) {
+                                for (int j = 0; j < 10; j++) {
+                                    try {
+                                        String cur = result.getString(j);
+                                        if (cur != null) {
+                                            System.out.print(cur.trim() + "\t|\t");
+                                        } else {
+                                            System.out.print("NULL" + "\t|\t");
+                                        }
+
+                                    } catch (SQLException e) {
+
+                                    }
                                 }
-
-                            } catch (SQLException e) {
-
+                                System.out.print("\n");
                             }
                         }
-                        System.out.print("\n");
                     }
                 }
             } catch (SQLException e) {
