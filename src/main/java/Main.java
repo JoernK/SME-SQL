@@ -62,7 +62,8 @@ public class Main {
             }
 
         } catch (JSQLParserException e) {
-            e.printStackTrace();
+            System.out.println("Error: SQL Parser Exception");
+            System.out.println("Details: " + e.getCause().toString());
             System.exit(1);
         }
 

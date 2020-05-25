@@ -121,7 +121,7 @@ public class InspectorStatementVisitor implements StatementVisitor {
             if (iev.foundProblem()) {
                 this.foundProblem = true;
                 problemList.addAll(iev.getProblemList());
-            } else if(writeColumnsLow.contains(whereColumn)){
+            } else if(writeColumnsLow.contains(whereColumn) && numberHighColumns > 0){
                 this.foundProblem = true;
                 problemList.add("WHERE column part of UPDATE column");
             } else {
