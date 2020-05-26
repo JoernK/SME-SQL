@@ -1,5 +1,6 @@
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
+import net.sf.jsqlparser.expression.operators.relational.ItemsList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.*;
 import net.sf.jsqlparser.statement.alter.Alter;
@@ -31,6 +32,8 @@ public class InspectorStatementVisitor implements StatementVisitor {
     String lowStatement;
     private boolean foundProblem = false;
     ArrayList<String> problemList;
+    private boolean lowFirst = false;
+
     public InspectorStatementVisitor(){
         problemList = new ArrayList<String>();
         foundProblem = false;
@@ -51,8 +54,33 @@ public class InspectorStatementVisitor implements StatementVisitor {
 
     @Override
     public void visit(Delete delete) {
-        foundProblem = true;
-        problemList.add(delete.toString());
+        if (delete.getWhere() != null) {
+            InspectorWhereExpressionVisitor iev = new InspectorWhereExpressionVisitor(delete.getTable().getName());
+            delete.getWhere().accept(iev);
+            String whereColumn = iev.accessColumnList.get(0);
+            if (iev.foundProblem() || iev.accessColumnList.size() != 1) {
+                this.foundProblem = true;
+                problemList.addAll(iev.getProblemList());
+            } else if (ExampleDBACL.isColumnInTableHigh(delete.getTable().getName(), whereColumn)) {
+                this.foundProblem = true;
+                problemList.add("WHERE in DELETE uses a high column ");
+            } else {
+                StringBuilder highExec = new StringBuilder("DELETE FROM " + delete.getTable() + " WHERE " +
+                        delete.getWhere().toString());
+                //Confirm that delete.getWhere().toString() produces correct result.
+                // If a row is deleted by simply nulling a pointer, the low exec could be replaced by dummy.
+                StringBuilder lowExec = new StringBuilder("UPDATE " + delete.getTable() + " SET ");
+                for (String column : ExampleDBACL.getLowColumns(delete.getTable().getName())) {
+                    lowExec.append(column + " = NULL, ");
+                }
+                int lowExecLength = lowExec.length();
+                lowExec.deleteCharAt(lowExecLength - 2); // Delete the last comma.
+                lowExec.append("WHERE " + delete.getWhere());
+                this.highStatement = highExec.toString();
+                this.lowStatement = lowExec.toString();
+            }
+
+        }
     }
 
     @Override
@@ -121,7 +149,7 @@ public class InspectorStatementVisitor implements StatementVisitor {
             if (iev.foundProblem()) {
                 this.foundProblem = true;
                 problemList.addAll(iev.getProblemList());
-            } else if(writeColumnsLow.contains(whereColumn) && numberHighColumns > 0){
+            } else if(lowFirst && writeColumnsLow.contains(whereColumn)){
                 this.foundProblem = true;
                 problemList.add("WHERE column part of UPDATE column");
             } else {
@@ -161,8 +189,67 @@ public class InspectorStatementVisitor implements StatementVisitor {
 
     @Override
     public void visit(Insert insert) {
-        foundProblem = true;
-        problemList.add(insert.toString());
+        String tableName = insert.getTable().toString();
+        StringBuilder highExec = new StringBuilder("INSERT INTO "+tableName+" (");
+        StringBuilder lowExec = new StringBuilder("UPDATE "+tableName+" SET ");
+        ItemsList values = insert.getItemsList();
+        InspectorItemsListVisitor itemVisitor = new InspectorItemsListVisitor();
+        values.accept(itemVisitor);
+        if(itemVisitor.foundProblem) {
+            this.foundProblem = true;
+            this.problemList.addAll(itemVisitor.problemList);
+            return;
+        }
+        ArrayList<Expression> itemExpressions = new ArrayList<Expression>(itemVisitor.expressionsList);
+
+        List<Integer> indexOfHighValues = new ArrayList<Integer>();
+        if(insert.getColumns().size()==0){
+            this.foundProblem = true;
+            problemList.add("No Columns in Insert ");
+            return;
+        }
+        int lowColumnsCount = 0;
+        int highColumnsCount = 0;
+        for (int i = 0; i < insert.getColumns().size(); i++){
+            Column current = insert.getColumns().get(i);
+            boolean isCurrentLow = !ExampleDBACL.isColumnInTableHigh(tableName, current.getColumnName());
+             if(isCurrentLow){
+                 lowExec.append(current.getColumnName()).append(" = ");
+                 if(lowColumnsCount == 0) {
+                     lowExec.append(itemExpressions.get(i).toString());
+                 } else {
+                     lowExec.append(", ").append(itemExpressions.get(i).toString());
+                 }
+                 lowColumnsCount++;
+             }
+             else{
+                 if(highColumnsCount > 0) {
+                     highExec.append(", ");
+                 }
+                 highExec.append(current.getColumnName());
+                 indexOfHighValues.add(i);
+                 highColumnsCount++;
+             }
+        }
+        highExec.append( ") VALUES (" );
+        for(int j = 0; j < indexOfHighValues.size(); j++){
+            if(j > 0){
+                highExec.append(",");
+            }
+            highExec.append(itemExpressions.get(indexOfHighValues.get(j)).toString());
+        }
+
+        highExec.append(");");
+        lowExec.append(" WHERE ROWID IN(SELECT MAX(ROWID) FROM ").append(tableName).append(");");
+        if (highColumnsCount != 0 && lowColumnsCount != 0) {
+            this.highStatement = highExec.toString();
+            this.lowStatement = lowExec.toString();
+        } else if(highColumnsCount != 0) {
+            this.highStatement = insert.toString();
+        } else {
+            this.lowStatement = insert.toString();
+        }
+
     }
 
     @Override

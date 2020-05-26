@@ -66,9 +66,11 @@ public class Main {
             System.out.println("Details: " + e.getCause().toString());
             System.exit(1);
         }
-
-        System.out.println("Low Execution: " + lowStatements);
-        System.out.println("High Execution: " + highStatements);
+        assert lowStatements.size() == highStatements.size();
+        for(int i = 0; i < lowStatements.size(); i++) {
+            System.out.println((i+1)+"th high execution: " + highStatements.get(i));
+            System.out.println((i+1)+"th low execution: " + lowStatements.get(i));
+        }
 
         Connection conn = DBConnector.connect();
         if(conn == null) {
@@ -83,9 +85,9 @@ public class Main {
                 java.sql.Statement cstathigh = conn.createStatement();
                 String curHighStr = highStatements.get(i);
                 if(!curHighStr.equals("dummy")) {
-                    if(curHighStr.contains("UPDATE")) {
+                    if (curHighStr.contains("UPDATE")) {
                         cstathigh.executeUpdate(curHighStr);
-                    } else {
+                    } else if (curHighStr.contains("SELECT")) {
                         ResultSet resultHigh = cstathigh.executeQuery(highStatements.get(i));
                         if (stdOut && highStdOut) {
                             while (resultHigh.next()) {
@@ -105,14 +107,18 @@ public class Main {
                                 System.out.print("\n");
                             }
                         }
+                    } else {
+                        cstathigh.execute(curHighStr);
                     }
                 }
+
+
                 java.sql.Statement cstat = conn.createStatement();
                 String curLowStr = lowStatements.get(i);
                 if(!curLowStr.equals("dummy")) {
                     if(curLowStr.contains("UPDATE")) {
                         cstat.executeUpdate(curLowStr);
-                    } else {
+                    } else if(curLowStr.contains("SELECT")){
                         ResultSet result = cstat.executeQuery(curLowStr);
                         if (stdOut && !highStdOut) {
                             while (result.next()) {
@@ -132,7 +138,9 @@ public class Main {
                                 System.out.print("\n");
                             }
                         }
-                    }
+                    } else {
+                    cstat.execute(curLowStr);
+                }
                 }
             } catch (SQLException e) {
                 e.printStackTrace();

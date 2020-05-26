@@ -1,4 +1,6 @@
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 public class ExampleDBACL {
     private static HashMap<String, HashMap<String, Boolean>> highColumnInTable = setUp();
@@ -33,6 +35,17 @@ public class ExampleDBACL {
             System.exit(4);
         }
         return ret;
+    }
+
+    public static List<String> getLowColumns(String tableName){
+        HashMap<String, Boolean> columnMap =  highColumnInTable.get(tableName.trim().toLowerCase());
+        ArrayList<String> lowCols = new ArrayList<String>();
+        for(HashMap.Entry<String, Boolean> entry : columnMap.entrySet()){
+            if(!entry.getValue()){
+                lowCols.add(entry.getKey());
+            }
+        }
+        return lowCols;
     }
 
 }
